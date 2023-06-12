@@ -27,7 +27,11 @@ torch.set_num_threads(1)
 
 def load_text_files(folder, event_int):
     """
-    Load text files from a folder and return a list of dictionaries with the event and disclosure.
+    Load text files from a specific folder.
+
+    :param folder: the path to the directory containing the text files
+    :param event_int: the integer value representing the event (label)
+    :return: list of dictionaries, each representing one text file with the event and its content
     """
     file_list = os.listdir(folder)
     text_data = []
@@ -42,6 +46,9 @@ def load_text_files(folder, event_int):
 def create_dataset(folders):
     """
     Create a dataset from a list of folders.
+
+    :param folders: the list of folders paths
+    :return: a tuple containing the feature matrix X, target vector y, and the event mapping dictionary
     """
     all_data = []
     # create a sorted list of folder names to create consistent label mappings
@@ -64,13 +71,25 @@ def create_dataset(folders):
 
 class EventAnalysisDataset(Dataset):
     def __init__(self, dataset):
+        """
+        Initialization of EventAnalysisDataset class.
+
+        :param dataset: a DataFrame containing the dataset
+        """
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained("monologg/koelectra-base-v3-discriminator")
 
     def __len__(self):
+        """
+        :return: the number of samples in the dataset
+        """
         return len(self.dataset)
 
     def __getitem__(self, idx):
+        """
+        :param idx: the index of the sample to fetch
+        :return: the input_ids, attention_mask, and the label of the sample
+        """
         row = self.dataset.iloc[idx].values
         text = str(row[0])  # Ensure text is a string
         y = row[1]
@@ -90,6 +109,15 @@ class EventAnalysisDataset(Dataset):
         return input_ids, attention_mask, y
 
 def train(model, train_loader, optimizer, device):
+    """
+    Train a model for one epoch.
+
+    :param model: the model to be trained
+    :param train_loader: DataLoader for the training data
+    :param optimizer: the optimizer to use
+    :param device: the device to use for training ('cuda' or 'cpu')
+    :return: average loss and accuracy for this epoch
+    """
     model.train()
     total_loss = 0.0
     correct = 0
@@ -119,6 +147,14 @@ def train(model, train_loader, optimizer, device):
     return total_loss / batches, correct.float() / total
 
 def evaluate(model, test_loader, device):
+    """
+    Evaluate the model's performance on a validation/test set.
+
+    :param model: the model to be evaluated
+    :param test_loader: DataLoader for the test data
+    :param device: the device to use for evaluation ('cuda' or 'cpu')
+    :return: accuracy on the test set
+    """
     model.eval()
     test_correct = 0
     test_total = 0
@@ -133,6 +169,18 @@ def evaluate(model, test_loader, device):
     return test_correct.float() / test_total
 
 def main():
+    """
+    The main function that orchestrates the creation of the dataset, training, evaluation, and saving the model.
+    - The function first collects all the directories in the main dataset directory.
+    - It then creates the dataset, and splits it into training and testing datasets.
+    - Next, it creates DataFrames for both training and testing data.
+    - It defines the path where the model should be saved and creates the directory if it doesn't exist.
+    - It then prepares the model for training, including setting the tokenizer, loading the pre-trained model, and setting up the optimizer.
+    - The training loop is executed over a specified number of epochs, and the model is evaluated at the end of each epoch.
+    - If the model's performance improves, it is saved.
+    - Finally, the function logs the model's performance over the epochs and evaluates it on the testing set. The model is then saved one last time.
+    """
+
     main_dataset_dir = './train_dataset'
 
     # get all the folders
@@ -144,6 +192,7 @@ def main():
     with open('event_mapping2.json', 'w') as f:
         json.dump(event_mapping, f)
 
+    # 400 classes
     num_classes = len(folders)
     print(f"Number of classes: {num_classes}")
 
